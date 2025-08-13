@@ -12,4 +12,4 @@ export DEALERPRICE='dealer_price.json'
 export DEALERPRICEFIELD='Конечная цена'
 export DEALERBENEFITFIELD='Скидка'
 # node .github/scripts/extractDataUPDAuto.js
-node .github/scrapejs/scrape.js
+node .github/scripts/scrapejs/scrape.js

@@ -96,11 +96,13 @@ const getPrice = async (element, selector, brand) => {
     return textNodes.map(n => n.textContent.trim()).join(' ').trim();
   });
   if (!priceText) {
-    throw new Error(`${brand.toUpperCase()}: Не удалось получить цену — пустое содержимое в "${selector}".`);
+    console.log(`${brand.toUpperCase()}: Не удалось получить цену — пустое содержимое в "${selector}".`);
+    return null;
   }
   const onlyDigits = priceText.replace(/\D/g, '');
   if (!onlyDigits) {
-    throw new Error(`${brand.toUpperCase()}: Не удалось получить цену — нет цифр в значении "${priceText}".`);
+    console.log(`${brand.toUpperCase()}: Не удалось получить цену — нет цифр в значении "${priceText}".`);
+    return null
   }
   return onlyDigits;
 };
