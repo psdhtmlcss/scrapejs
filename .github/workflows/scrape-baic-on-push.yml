@@ -9,12 +9,12 @@ jobs:
   scrape_baic:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+
     env:
-      USER_AGENT: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36
       DEBUG_SCREENSHOT: 'true'
-      TZ: Europe/Moscow
+      
     permissions:
-      contents: write
+      contents: write # Необходимо для создания коммитов
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,36 +29,25 @@ jobs:
             npm install -g pnpm
             pnpm install --no-frozen-lockfile
 
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@latest
+      # - name: Setup Chrome
+      #   uses: browser-actions/setup-chrome@latest
 
-      - name: Configure Chrome env
-        run: |
-          echo "CHROME_BIN=${CHROME_PATH}" >> $GITHUB_ENV
-          echo "Using CHROME_PATH=${CHROME_PATH}"
+      # - name: Configure Chrome env
+      #   run: |
+      #     echo "CHROME_BIN=${CHROME_PATH}" >> $GITHUB_ENV
+      #     echo "Using CHROME_PATH=${CHROME_PATH}"
 
       - name: Run BAIC scraper
         run: pnpm run scrape-baic
 
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: baic-screenshots
-          path: |
-            *.png
-            page.html
-          if-no-files-found: ignore
-
       - name: Commit and push changes
         run: |
-          if git status -s; then
-            git config --local user.email "support+actions@github.com"
-            git config --local user.name "github-actions-bot"
-            if [[ $(find ./src -type f -name "*.json") ]]; then git add $(find ./src -type f -name "*.json"); fi
-            git commit -m "Update BAIC data" -a || echo "No changes to commit"
-            git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
-            git push origin $GITHUB_REF_NAME
+          if git status --porcelain; then
+            git config --local user.email "actions@github.com"
+            git config --local user.name "GitHub Actions"
+            git add .
+            git commit -m "Auto-commit script changes [skip ci]"
+            git push
           else
             echo "No changes to commit"
           fi

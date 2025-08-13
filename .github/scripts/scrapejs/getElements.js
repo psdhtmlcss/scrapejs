@@ -1,9 +1,7 @@
 const puppeteer = require('puppeteer'); 
-const fs = require('fs');
 const { getId, getModel, getPrice, getLink } = require('./utils');
 
 const DEBUG_SCREENSHOT = process.env.DEBUG_SCREENSHOT === 'true' ? true : false;
-const CUSTOM_USER_AGENT = process.env.USER_AGENT || '';
 
 const BrowserOption = {
   ARGS: [
@@ -12,15 +10,15 @@ const BrowserOption = {
     '--disable-dev-shm-usage', // Помогает избежать проблем с памятью в Docker/CI
     '--disable-accelerated-2d-canvas', // Уменьшает использование ресурсов
     '--disable-gpu', // Отключает GPU (не нужен в headless)
+    '--single-process', // Может помочь на слабых серверах (но не всегда стабильно)
     '--no-zygote', // Уменьшает использование памяти
-    '--lang=ru-RU,ru',
   ],
   PATHS: {
     WIN: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     MAC: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     LINUX: '/usr/bin/google-chrome'
   },
-  TIMEOUT: 120000,
+  TIMEOUT: 60000,
 };
 
 const Viewport = {
@@ -35,11 +33,11 @@ const Platform = {
 };
 
 const ResponseOption = {
-  TIMEOUT: 120000,
+  TIMEOUT: 60000,
 };
 
 const WaitForSelectorOption = {
-  TIMEOUT: 120000,
+  TIMEOUT: 60000,
 };
 
 const WaitUntil = {
@@ -77,86 +75,21 @@ const getElements = async () => {
   try {
     browser = await puppeteer.launch(browserOptions);
     const page = await browser.newPage();
-    // Блокируем тяжёлые и проблемные внешние ресурсы
-    const mainOrigin = new URL(Config.URL).origin;
-    await page.route('**/*', route => {
-      const req = route.request();
-      const url = req.url();
-      const type = req.resourceType();
-      // Отрезаем явно проблемный домен
-      if (url.includes('script.smart-contract.digital')) return route.abort();
-      // Режем тяжёлые/необязательные ресурсы третьих доменов
-      const isThirdParty = !url.startsWith(mainOrigin);
-      const isHeavyAsset = ['image', 'font', 'stylesheet', 'media'].includes(type);
-      if (isThirdParty && isHeavyAsset) return route.abort();
-      return route.continue();
-    });
-    if (CUSTOM_USER_AGENT) {
-      await page.setUserAgent(CUSTOM_USER_AGENT);
-    }
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
-    });
-    page.on('console', msg => {
-      try { console.log(`[page:${msg.type()}]`, msg.text()); } catch {}
-    });
-    page.on('pageerror', err => {
-      try { console.log('[pageerror]', err.message); } catch {}
-    });
-    page.on('requestfailed', req => {
-      try { console.log('[requestfailed]', req.url(), req.failure() && req.failure().errorText); } catch {}
-    });
-    page.setDefaultTimeout(120000);
-    page.setDefaultNavigationTimeout(120000);
     const data = [];
     const timestamp = new Date().toISOString().substring(0, 19).replace('T', '-');
     let screenshotCount = 0;
-
+    console.log('browser: ', browser);
     await page.setViewport({width: Viewport.WIDTH, height: Viewport.HEIGHT});
 
     const response = await page.goto(Config.URL, {
-      waitUntil: WaitUntil.NETWORK_IDLE_2,
+      waitUntil: Config.CLICK_SELECTOR ? WaitUntil.DOM : WaitUntil.FULL,
       timeout: ResponseOption.TIMEOUT,
     });
+    console.log('response: ', response);
   
     if (!response.ok()) {
       throw new Error(`${Config.BRAND.toUpperCase()}: Статус загрузки страницы: ${response.status()}`);
     }
-
-    try {
-      if (Config.CLICK_SELECTOR) {
-        await page.waitForSelector(Config.CLICK_SELECTOR, { visible: true, timeout: WaitForSelectorOption.TIMEOUT });
-      } else if (Config.WAIT_SELECTOR) {
-        await page.waitForSelector(Config.WAIT_SELECTOR, { timeout: WaitForSelectorOption.TIMEOUT });
-      }
-    } catch (e) {
-      // Не упадём на ожидании — попробуем продолжить, если карточки уже появились
-      console.log('[wait warning]', e.message);
-    }
-
-    // Подгрузка динамического контента: плавный скролл страницы
-    try {
-      await page.evaluate(async () => {
-        await new Promise(resolve => {
-          let totalHeight = 0;
-          const distance = 400;
-          const timer = setInterval(() => {
-            const { scrollHeight } = document.body;
-            window.scrollBy(0, distance);
-            totalHeight += distance;
-            if (totalHeight >= scrollHeight) {
-              clearInterval(timer);
-              resolve();
-            }
-          }, 200);
-        });
-      });
-    } catch {}
-
-    if (DEBUG_SCREENSHOT) {
-      await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-after-wait.png` });
-      screenshotCount++;
-    }  
 
     if (Config.CLICK_SELECTOR) {
       const modelsLink = await page.waitForSelector(Config.CLICK_SELECTOR, { visible: true, timeout: WaitForSelectorOption.TIMEOUT });
@@ -178,22 +111,7 @@ const getElements = async () => {
       }
     }
 
-    let elements = await page.$$(Config.ITEM);
-    if (!elements.length) {
-      // Небольшая доп. задержка на догрузку
-      try { await page.waitForNetworkIdle(); } catch {}
-      try {
-        if (DEBUG_SCREENSHOT) {
-          await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-before-lookup.png`, fullPage: true });
-          screenshotCount++;
-        }
-      } catch {}
-      try {
-        const html = await page.content();
-        fs.writeFileSync('page.html', html);
-      } catch {}
-      elements = await page.$$(Config.ITEM);
-    }
+    const elements = await page.$$(Config.ITEM);
     if (!elements.length) throw new Error(`${Config.BRAND.toUpperCase()}: Не найдено ни одного элемента.`);
     
     for (const element of elements) {
