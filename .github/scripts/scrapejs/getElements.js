@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const { getId, getModel, getPrice, getLink } = require('./utils');
 
 const DEBUG_SCREENSHOT = process.env.DEBUG_SCREENSHOT === 'true' ? true : false;
+const CUSTOM_USER_AGENT = process.env.USER_AGENT || '';
 
 const BrowserOption = {
   ARGS: [
@@ -18,7 +19,7 @@ const BrowserOption = {
     MAC: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     LINUX: '/usr/bin/google-chrome'
   },
-  TIMEOUT: 60000,
+  TIMEOUT: 120000,
 };
 
 const Viewport = {
@@ -33,11 +34,11 @@ const Platform = {
 };
 
 const ResponseOption = {
-  TIMEOUT: 60000,
+  TIMEOUT: 120000,
 };
 
 const WaitForSelectorOption = {
-  TIMEOUT: 60000,
+  TIMEOUT: 120000,
 };
 
 const WaitUntil = {
@@ -75,6 +76,23 @@ const getElements = async () => {
   try {
     browser = await puppeteer.launch(browserOptions);
     const page = await browser.newPage();
+    if (CUSTOM_USER_AGENT) {
+      await page.setUserAgent(CUSTOM_USER_AGENT);
+    }
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+    });
+    page.on('console', msg => {
+      try { console.log(`[page:${msg.type()}]`, msg.text()); } catch {}
+    });
+    page.on('pageerror', err => {
+      try { console.log('[pageerror]', err.message); } catch {}
+    });
+    page.on('requestfailed', req => {
+      try { console.log('[requestfailed]', req.url(), req.failure() && req.failure().errorText); } catch {}
+    });
+    page.setDefaultTimeout(120000);
+    page.setDefaultNavigationTimeout(120000);
     const data = [];
     const timestamp = new Date().toISOString().substring(0, 19).replace('T', '-');
     let screenshotCount = 0;
@@ -90,7 +108,11 @@ const getElements = async () => {
       throw new Error(`${Config.BRAND.toUpperCase()}: Статус загрузки страницы: ${response.status()}`);
     }
 
-    await page.waitForNetworkIdle();
+    if (Config.CLICK_SELECTOR) {
+      await page.waitForSelector(Config.CLICK_SELECTOR, { visible: true, timeout: WaitForSelectorOption.TIMEOUT });
+    } else if (Config.WAIT_SELECTOR) {
+      await page.waitForSelector(Config.WAIT_SELECTOR, { timeout: WaitForSelectorOption.TIMEOUT });
+    }
 
     if (DEBUG_SCREENSHOT) {
       await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-after-wait.png` });
