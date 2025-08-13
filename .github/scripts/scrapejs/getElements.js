@@ -11,7 +11,6 @@ const BrowserOption = {
     '--disable-dev-shm-usage', // Помогает избежать проблем с памятью в Docker/CI
     '--disable-accelerated-2d-canvas', // Уменьшает использование ресурсов
     '--disable-gpu', // Отключает GPU (не нужен в headless)
-    '--single-process', // Может помочь на слабых серверах (но не всегда стабильно)
     '--no-zygote', // Уменьшает использование памяти
   ],
   PATHS: {
