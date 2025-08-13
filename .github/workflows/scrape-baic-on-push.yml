@@ -5,6 +5,14 @@ on:
     branches:
       - main
 
+  # Ручной запуск с выбором скрипта
+  workflow_dispatch:
+    inputs:
+      script_path:
+        description: './scripts/my_script.sh)'
+        required: true
+        default: './scripts/sh/scrape-baic.sh'
+        type: string
 jobs:
   scrape_baic:
     if: github.actor != 'github-actions[bot]'

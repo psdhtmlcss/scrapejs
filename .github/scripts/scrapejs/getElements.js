@@ -78,7 +78,7 @@ const getElements = async () => {
     const data = [];
     const timestamp = new Date().toISOString().substring(0, 19).replace('T', '-');
     let screenshotCount = 0;
-    console.log('browser: ', browser);
+    console.log('page: ', browser);
     await page.setViewport({width: Viewport.WIDTH, height: Viewport.HEIGHT});
 
     const response = await page.goto(Config.URL, {
