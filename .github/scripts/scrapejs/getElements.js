@@ -12,6 +12,9 @@ const BrowserOption = {
     '--disable-gpu', // Отключает GPU (не нужен в headless)
     '--single-process', // Может помочь на слабых серверах (но не всегда стабильно)
     '--no-zygote', // Уменьшает использование памяти
+    '--disable-web-security',
+    '--disable-features=IsolateOrigins,site-per-process',
+    '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
   ],
   PATHS: {
     WIN: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -104,10 +107,15 @@ const getElements = async () => {
     redirectChain.forEach((req, i) => {
       console.log(`Redirect ${i + 1}: ${req.url()} → ${req.response().url()}`);
     });
-    if (DEBUG_SCREENSHOT) {
-      await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-before-click.png` });
-      screenshotCount++;
-    }
+
+    page.on('close', () => {
+      console.log('Страница закрыта! Возможно, сайт принудительно разорвал соединение.');
+    });
+
+    // if (DEBUG_SCREENSHOT) {
+    //   await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-before-click.png` });
+    //   screenshotCount++;
+    // }
   
     if (!response.ok()) {
       throw new Error(`${Config.BRAND.toUpperCase()}: Статус загрузки страницы: ${response.status()}`);
