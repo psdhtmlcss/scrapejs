@@ -1,6 +1,7 @@
 export BRAND='baic'
 export URL='https://baic-auto.ru/models/'
 export REGEXP='\$\{JSON\.stringify\((\{"menuType":.*)\).replace\('
+export CLICK_SELECTOR="ul[class='n103-00__list']>li:first-child>a"
 export WAIT_SELECTOR="div[class='u123-03__row']"
 export ITEM_CSS="div[class='u123-03__item']"
 export MODEL_CSS="div[class='u105-00__text h6']"

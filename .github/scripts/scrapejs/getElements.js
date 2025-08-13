@@ -81,11 +81,33 @@ const getElements = async () => {
     console.log('page: ', browser);
     await page.setViewport({width: Viewport.WIDTH, height: Viewport.HEIGHT});
 
-    const response = await page.goto(Config.URL, {
-      waitUntil: Config.CLICK_SELECTOR ? WaitUntil.DOM : WaitUntil.FULL,
-      timeout: ResponseOption.TIMEOUT,
+    // const response = await page.goto(Config.URL, {
+    //   waitUntil: Config.CLICK_SELECTOR ? WaitUntil.DOM : WaitUntil.FULL,
+    //   timeout: ResponseOption.TIMEOUT,
+    // });
+    // console.log('response: ', response);
+
+    const [response] = await Promise.all([
+      page.waitForNavigation(), // ждём окончательной навигации
+      page.goto(Config.URL, {
+        waitUntil: Config.CLICK_SELECTOR ? WaitUntil.DOM : WaitUntil.FULL,
+        timeout: ResponseOption.TIMEOUT,
+      })
+    ]);
+    
+    console.log('Status code: ', response.status()); // теперь должен работать
+
+    const redirectChain = response.request().redirectChain();
+    console.log('Redirect chain length:', redirectChain.length);
+
+    // Выводим URL всех редиректов
+    redirectChain.forEach((req, i) => {
+      console.log(`Redirect ${i + 1}: ${req.url()} → ${req.response().url()}`);
     });
-    console.log('response: ', response);
+    if (DEBUG_SCREENSHOT) {
+      await page.screenshot({ path: `${timestamp}-${Config.BRAND.toUpperCase()}-${screenshotCount}-before-click.png` });
+      screenshotCount++;
+    }
   
     if (!response.ok()) {
       throw new Error(`${Config.BRAND.toUpperCase()}: Статус загрузки страницы: ${response.status()}`);
