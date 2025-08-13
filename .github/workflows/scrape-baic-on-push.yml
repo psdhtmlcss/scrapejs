@@ -22,12 +22,15 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'pnpm-lock.yaml'
 
-      - name: Install pnpm and dependencies
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.2
+
+      - name: Install dependencies
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
-        run: |
-          npm install -g pnpm
-          pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
